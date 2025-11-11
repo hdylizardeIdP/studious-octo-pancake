@@ -119,7 +119,51 @@ CREATE POLICY "Users can insert their own lists"
 
 ## Setup Instructions
 
-### Prerequisites
+### 🚀 Quick Start (5 minutes)
+
+**New to this project? Start here:** [QUICKSTART.md](./QUICKSTART.md)
+
+Step-by-step guide to get running in 5 minutes with Docker.
+
+### Quick Start with Docker (Recommended)
+
+**Prerequisites:**
+- Docker and Docker Compose installed
+- Supabase account (free tier available)
+
+**Steps:**
+```bash
+# 1. Clone repo
+git clone <your-repo-url>
+cd grocery-list
+
+# 2. Configure environment
+cp .env.example .env
+# Edit .env with your Supabase credentials
+
+# 3. Start all services (production mode)
+docker-compose up -d
+
+# OR for development mode with hot-reloading:
+docker-compose -f docker-compose.dev.yaml up
+
+# Access:
+# Frontend: http://localhost:3000 (production) or http://localhost:5173 (dev)
+# Backend API: http://localhost:8000
+# API Docs: http://localhost:8000/docs
+
+# View logs
+docker-compose logs -f
+
+# Stop services
+docker-compose down
+```
+
+For detailed Docker documentation, see [DOCKER.md](./DOCKER.md).
+
+### Manual Setup (Alternative)
+
+**Prerequisites:**
 - Node.js 18+ and npm/yarn
 - Python 3.10+
 - Supabase account (free tier available)
@@ -193,6 +237,14 @@ python -m services.item_extractor       # Test item extraction
 
 ## Deployment
 
+### Docker Production Deploy
+```bash
+# Build and run in production mode
+docker-compose -f docker-compose.yaml up -d --build
+
+# Deploy to any Docker host (DigitalOcean, AWS ECS, etc.)
+```
+
 ### Frontend (Vercel)
 ```bash
 cd frontend
@@ -207,7 +259,7 @@ npm run build
 vercel
 ```
 
-Alternative: Deploy to AWS Lambda, Google Cloud Functions, or Railway.
+Alternative: Deploy to AWS Lambda, Google Cloud Functions, Railway, or any Docker host.
 
 ## Roadmap
 
@@ -222,12 +274,66 @@ Alternative: Deploy to AWS Lambda, Google Cloud Functions, or Railway.
 - [ ] Price tracking
 - [ ] Meal planning integration
 
+## Troubleshooting
+
+### Docker Issues
+See [DOCKER.md](./DOCKER.md) for comprehensive Docker troubleshooting.
+
+Common quick fixes:
+```bash
+# Rebuild containers
+docker-compose down && docker-compose up -d --build
+
+# Check logs
+docker-compose logs -f
+
+# Clean Docker system
+docker system prune -a
+```
+
+### Supabase Connection Issues
+- Verify credentials in `.env` match Supabase dashboard
+- Check backend uses **service_role** key (not anon key)
+- Ensure RLS policies allow your operations
+- Test connection: `curl http://localhost:8000/health`
+
+### Frontend Not Loading
+- Clear browser cache
+- Check console for errors (F12)
+- Verify `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` set
+- Try: `npm run build && npm run preview`
+
+### Backend Errors
+- Verify Tesseract installed: `tesseract --version`
+- Verify spaCy model: `python -m spacy validate`
+- Check Python version: `python --version` (need 3.10+)
+- Check logs for stack traces
+
+### Real-time Not Working
+- Enable replication in Supabase: Database → Replication
+- Check subscription in browser DevTools → Network → WS
+- Verify RLS policies allow SELECT on tables
+
+## 📚 Documentation
+
+| Document | Description |
+|----------|-------------|
+| [QUICKSTART.md](./QUICKSTART.md) | **Start here** - Get running in 5 minutes |
+| [DOCKER.md](./DOCKER.md) | Complete Docker setup, commands, and troubleshooting |
+| [ARCHITECTURE.md](./ARCHITECTURE.md) | Technical architecture, patterns, and design decisions |
+| [TODO.md](./TODO.md) | Development roadmap and task tracking |
+| [backend/README.md](./backend/README.md) | Backend API documentation |
+
+**For AI assistants (Claude, etc.):** ARCHITECTURE.md contains comprehensive technical context for continuing development.
+
 ## Contributing
 
 1. Fork repository
 2. Create feature branch
 3. Commit changes
 4. Push and create PR
+
+See [ARCHITECTURE.md](./ARCHITECTURE.md) for code patterns and guidelines.
 
 ## License
 

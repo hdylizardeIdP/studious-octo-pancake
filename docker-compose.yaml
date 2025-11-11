@@ -1,0 +1,66 @@
+# Docker Compose - Production Configuration
+#
+# This is the production setup with optimized builds.
+# - Frontend: Multi-stage build served by nginx
+# - Backend: Python/FastAPI with Tesseract OCR
+#
+# Usage:
+#   docker-compose up -d              # Start services
+#   docker-compose logs -f            # View logs
+#   docker-compose down               # Stop services
+#
+# Access:
+#   Frontend: http://localhost:3000
+#   Backend API: http://localhost:8000
+#   API Docs: http://localhost:8000/docs
+
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"  # Backend API port
+    environment:
+      # Loaded from .env file in project root
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}  # Use service_role key
+      - ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173,http://localhost
+    volumes:
+      # Mount code for easy access to logs (not hot-reload in production)
+      - ./backend:/app
+      - /app/__pycache__  # Exclude Python cache
+    restart: unless-stopped
+    healthcheck:
+      # Check if API is responding
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s  # Allow time for startup
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile  # Multi-stage build with nginx
+    ports:
+      - "3000:80"  # Map host:3000 to container:80 (nginx)
+    environment:
+      # Build-time environment variables
+      - VITE_SUPABASE_URL=${VITE_SUPABASE_URL}
+      - VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY}  # Public key
+    depends_on:
+      - backend  # Wait for backend to start first
+    restart: unless-stopped
+    healthcheck:
+      # Check if nginx is serving content
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  default:
+    name: grocery-list-network  # Custom network for service communication

@@ -1,0 +1,60 @@
+# Docker Compose - Development Configuration
+#
+# This is the development setup with hot-reloading enabled.
+# Code changes on your host machine automatically reload in containers.
+#
+# Usage:
+#   docker-compose -f docker-compose.dev.yaml up    # Start with logs
+#   docker-compose -f docker-compose.dev.yaml down  # Stop services
+#
+# Access:
+#   Frontend: http://localhost:5173 (Vite dev server with HMR)
+#   Backend API: http://localhost:8000 (uvicorn with --reload)
+#   API Docs: http://localhost:8000/docs
+#
+# Benefits:
+#   - Changes to .tsx/.ts/.py files auto-reload
+#   - Faster development iteration
+#   - Full source maps and debugging
+
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+      - ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173,http://localhost
+    volumes:
+      # Mount source code for hot-reload
+      - ./backend:/app
+      - /app/__pycache__  # Exclude cache from sync
+    # Override CMD to enable --reload flag
+    command: uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev  # Dev dockerfile with dev dependencies
+    ports:
+      - "5173:5173"  # Vite dev server default port
+    environment:
+      - VITE_SUPABASE_URL=${VITE_SUPABASE_URL}
+      - VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY}
+    volumes:
+      # Mount source code for hot-reload
+      - ./frontend:/app
+      - /app/node_modules  # Exclude node_modules from sync (use container's)
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+networks:
+  default:
+    name: grocery-list-network
