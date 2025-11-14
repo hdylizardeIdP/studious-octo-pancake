@@ -1,4 +1,4 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException, Form, Request
+from fastapi import APIRouter, UploadFile, File, HTTPException, Form, Request, Depends
 from typing import List, Optional
 import tempfile
 import os
@@ -9,6 +9,7 @@ from slowapi.util import get_remote_address
 
 from services.document_parser import DocumentParser
 from services.item_extractor import ItemExtractor
+from api.dependencies.auth import verify_supabase_token
 
 # Configure logging
 logging.basicConfig(
@@ -72,12 +73,18 @@ def validate_file_content(content: bytes, declared_mime: str) -> bool:
 async def parse_document(
     request: Request,
     file: UploadFile = File(...),
-    list_id: Optional[str] = Form(None)
+    list_id: Optional[str] = Form(None),
+    user: dict = Depends(verify_supabase_token)
 ):
     """
     Parse a document (txt, docx, pdf, or image) and extract grocery items
+
+    Authentication: Required (Bearer token)
     Rate limit: 10 requests per minute per IP
     """
+    user_id = user.get("sub")
+    logger.info(f"Document parse request from user {user_id}, filename: {file.filename}")
+
     try:
         # Validate file type
         allowed_types = list(ALLOWED_MIME_TYPES.keys()) + ["image/jpg"]
@@ -111,12 +118,13 @@ async def parse_document(
                 detail="File content does not match declared type"
             )
 
-        # Save uploaded file temporarily
-        with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.filename)[1]) as tmp:
-            tmp.write(content)
-            tmp_path = tmp.name
-
+        # Save uploaded file temporarily and ensure cleanup
+        tmp_path = None
         try:
+            with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.filename)[1]) as tmp:
+                tmp.write(content)
+                tmp_path = tmp.name
+
             # Parse document based on type
             text = None
 
@@ -135,17 +143,20 @@ async def parse_document(
             # Extract grocery items
             items = item_extractor.extract_items(text)
 
+            logger.info(f"Successfully parsed document for user {user_id}, extracted {len(items)} items")
+
             return {
                 "success": True,
                 "filename": file.filename,
                 "extracted_text": text,
                 "items": items,
-                "count": len(items)
+                "count": len(items),
+                "user_id": user_id
             }
 
         finally:
             # Clean up temp file
-            if os.path.exists(tmp_path):
+            if tmp_path and os.path.exists(tmp_path):
                 os.unlink(tmp_path)
 
     except HTTPException:
@@ -161,11 +172,20 @@ async def parse_document(
 
 @router.post("/extract-text")
 @limiter.limit("10/minute")
-async def extract_text_only(request: Request, file: UploadFile = File(...)):
+async def extract_text_only(
+    request: Request,
+    file: UploadFile = File(...),
+    user: dict = Depends(verify_supabase_token)
+):
     """
     Extract raw text from a document without item parsing
+
+    Authentication: Required (Bearer token)
     Rate limit: 10 requests per minute per IP
     """
+    user_id = user.get("sub")
+    logger.info(f"Text extraction request from user {user_id}, filename: {file.filename}")
+
     try:
         # Validate file type
         allowed_types = list(ALLOWED_MIME_TYPES.keys()) + ["image/jpg"]
@@ -199,12 +219,13 @@ async def extract_text_only(request: Request, file: UploadFile = File(...)):
                 detail="File content does not match declared type"
             )
 
-        # Save uploaded file temporarily
-        with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.filename)[1]) as tmp:
-            tmp.write(content)
-            tmp_path = tmp.name
-
+        # Save uploaded file temporarily and ensure cleanup
+        tmp_path = None
         try:
+            with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.filename)[1]) as tmp:
+                tmp.write(content)
+                tmp_path = tmp.name
+
             text = None
 
             if file.content_type == "text/plain":
@@ -219,13 +240,16 @@ async def extract_text_only(request: Request, file: UploadFile = File(...)):
             if not text:
                 raise HTTPException(status_code=400, detail="Could not extract text")
 
+            logger.info(f"Successfully extracted text for user {user_id}")
+
             return {
                 "success": True,
-                "text": text
+                "text": text,
+                "user_id": user_id
             }
 
         finally:
-            if os.path.exists(tmp_path):
+            if tmp_path and os.path.exists(tmp_path):
                 os.unlink(tmp_path)
 
     except HTTPException:
