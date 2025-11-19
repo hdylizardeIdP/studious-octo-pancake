@@ -6,27 +6,13 @@ from fastapi import HTTPException, Security, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Optional
 import jwt
-import os
 import logging
-from functools import lru_cache
-import httpx
+
+from config import get_settings
 
 logger = logging.getLogger(__name__)
 
 security = HTTPBearer()
-
-
-@lru_cache()
-def get_supabase_jwt_secret() -> str:
-    """
-    Get Supabase JWT secret from environment.
-    This should be the JWT secret from your Supabase project settings.
-    """
-    secret = os.getenv("SUPABASE_JWT_SECRET")
-    if not secret:
-        logger.warning("SUPABASE_JWT_SECRET not set - authentication will fail")
-        raise ValueError("SUPABASE_JWT_SECRET environment variable is required")
-    return secret
 
 
 async def verify_supabase_token(
@@ -51,13 +37,13 @@ async def verify_supabase_token(
     token = credentials.credentials
 
     try:
-        # Get JWT secret
-        jwt_secret = get_supabase_jwt_secret()
+        # Get settings with validated JWT secret
+        settings = get_settings()
 
         # Decode and verify the token
         payload = jwt.decode(
             token,
-            jwt_secret,
+            settings.supabase_jwt_secret,
             algorithms=["HS256"],
             options={"verify_aud": False}  # Supabase doesn't always use aud claim
         )
