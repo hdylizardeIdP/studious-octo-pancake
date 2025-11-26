@@ -1,13 +1,13 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
+from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from typing import List
 import logging
 from dotenv import load_dotenv
 
 from api.routers import documents
+from api.limiter import limiter
 from services.document_parser import DocumentParser
 from services.item_extractor import ItemExtractor
 from config import get_settings
@@ -26,9 +26,6 @@ load_dotenv()
 logger.info("Starting Grocery List API...")
 settings = get_settings()
 logger.setLevel(settings.log_level)
-
-# Rate limiting configuration
-limiter = Limiter(key_func=get_remote_address, default_limits=["100/hour"])
 
 app = FastAPI(
     title="Grocery List API",

@@ -4,12 +4,11 @@ import tempfile
 import os
 import magic
 import logging
-from slowapi import Limiter
-from slowapi.util import get_remote_address
 
 from services.document_parser import DocumentParser
 from services.item_extractor import ItemExtractor
 from api.dependencies.auth import verify_supabase_token
+from api.limiter import limiter
 
 # Get module logger
 logger = logging.getLogger(__name__)
@@ -18,9 +17,6 @@ router = APIRouter()
 
 document_parser = DocumentParser()
 item_extractor = ItemExtractor()
-
-# Rate limiter for document endpoints
-limiter = Limiter(key_func=get_remote_address)
 
 # Security: File upload limits (10MB max)
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB in bytes
