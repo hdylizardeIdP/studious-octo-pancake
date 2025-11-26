@@ -64,6 +64,53 @@ def validate_file_content(content: bytes, declared_mime: str) -> bool:
     except Exception:
         return False
 
+
+async def validate_and_read_file(file: UploadFile) -> bytes:
+    """
+    Validate file type, read content with size limit, and validate content using magic bytes.
+    
+    Args:
+        file: The uploaded file to validate and read
+        
+    Returns:
+        The validated file content as bytes
+        
+    Raises:
+        HTTPException: If validation fails
+    """
+    allowed_types = list(ALLOWED_MIME_TYPES.keys()) + ["image/jpg"]
+
+    if file.content_type not in allowed_types:
+        raise HTTPException(
+            status_code=400,
+            detail="Unsupported file type"
+        )
+
+    # Read file content with size limit
+    content = bytearray()
+    chunk_size = 1024 * 1024  # 1MB chunks
+    total_size = 0
+
+    while chunk := await file.read(chunk_size):
+        total_size += len(chunk)
+        if total_size > MAX_FILE_SIZE:
+            raise HTTPException(
+                status_code=413,
+                detail="File size exceeds maximum limit of 10MB"
+            )
+        content.extend(chunk)
+
+    content = bytes(content)
+
+    # Validate file content using magic bytes
+    if not validate_file_content(content, file.content_type):
+        raise HTTPException(
+            status_code=400,
+            detail="File content does not match declared type"
+        )
+
+    return content
+
 @router.post("/parse")
 @limiter.limit("10/minute")
 async def parse_document(
@@ -82,37 +129,8 @@ async def parse_document(
     logger.info(f"Document parse request from user {user_id}, filename: {file.filename}")
 
     try:
-        # Validate file type
-        allowed_types = list(ALLOWED_MIME_TYPES.keys()) + ["image/jpg"]
-
-        if file.content_type not in allowed_types:
-            raise HTTPException(
-                status_code=400,
-                detail="Unsupported file type"
-            )
-
-        # Read file content with size limit
-        content = bytearray()
-        chunk_size = 1024 * 1024  # 1MB chunks
-        total_size = 0
-
-        while chunk := await file.read(chunk_size):
-            total_size += len(chunk)
-            if total_size > MAX_FILE_SIZE:
-                raise HTTPException(
-                    status_code=413,
-                    detail="File size exceeds maximum limit of 10MB"
-                )
-            content.extend(chunk)
-
-        content = bytes(content)
-
-        # Validate file content using magic bytes
-        if not validate_file_content(content, file.content_type):
-            raise HTTPException(
-                status_code=400,
-                detail="File content does not match declared type"
-            )
+        # Validate and read file content
+        content = await validate_and_read_file(file)
 
         # Save uploaded file temporarily and ensure cleanup
         tmp_path = None
@@ -183,37 +201,8 @@ async def extract_text_only(
     logger.info(f"Text extraction request from user {user_id}, filename: {file.filename}")
 
     try:
-        # Validate file type
-        allowed_types = list(ALLOWED_MIME_TYPES.keys()) + ["image/jpg"]
-
-        if file.content_type not in allowed_types:
-            raise HTTPException(
-                status_code=400,
-                detail="Unsupported file type"
-            )
-
-        # Read file content with size limit
-        content = bytearray()
-        chunk_size = 1024 * 1024  # 1MB chunks
-        total_size = 0
-
-        while chunk := await file.read(chunk_size):
-            total_size += len(chunk)
-            if total_size > MAX_FILE_SIZE:
-                raise HTTPException(
-                    status_code=413,
-                    detail="File size exceeds maximum limit of 10MB"
-                )
-            content.extend(chunk)
-
-        content = bytes(content)
-
-        # Validate file content using magic bytes
-        if not validate_file_content(content, file.content_type):
-            raise HTTPException(
-                status_code=400,
-                detail="File content does not match declared type"
-            )
+        # Validate and read file content
+        content = await validate_and_read_file(file)
 
         # Save uploaded file temporarily and ensure cleanup
         tmp_path = None
