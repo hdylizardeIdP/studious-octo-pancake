@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { supabase } from '../lib/supabase'
+import type { User } from '@supabase/supabase-js'
 
 export interface GroceryItem {
   id: string
@@ -21,14 +22,14 @@ export interface GroceryList {
 }
 
 interface StoreState {
-  user: any | null
+  user: User | null
   lists: GroceryList[]
   currentList: GroceryList | null
   items: GroceryItem[]
   isOnline: boolean
 
   // Actions
-  setUser: (user: any) => void
+  setUser: (user: User | null) => void
   setLists: (lists: GroceryList[]) => void
   setCurrentList: (list: GroceryList | null) => void
   setItems: (items: GroceryItem[]) => void

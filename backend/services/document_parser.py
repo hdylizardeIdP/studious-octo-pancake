@@ -4,6 +4,10 @@ import fitz  # PyMuPDF
 from PIL import Image
 import pytesseract
 from typing import Optional
+import logging
+
+# Configure logging
+logger = logging.getLogger(__name__)
 
 
 class DocumentParser:
@@ -47,7 +51,7 @@ class DocumentParser:
             if text:
                 return '\n'.join(text)
         except Exception as e:
-            print(f"pdfplumber failed: {e}, trying PyMuPDF")
+            logger.warning(f"pdfplumber failed: {e}, trying PyMuPDF")
 
         # Fallback to PyMuPDF
         try:
@@ -58,7 +62,7 @@ class DocumentParser:
 
             return '\n'.join(text)
         except Exception as e:
-            print(f"PyMuPDF also failed: {e}")
+            logger.error(f"PyMuPDF also failed: {e}")
             return ""
 
     def parse_image(self, file_path: str) -> str:
@@ -71,7 +75,7 @@ class DocumentParser:
 
             return text.strip()
         except Exception as e:
-            print(f"OCR failed: {e}")
+            logger.error(f"OCR failed: {e}")
             # Note: Tesseract needs to be installed on the system
             # For production, consider using AWS Textract or Google Vision API
             raise Exception("OCR processing failed. Ensure Tesseract is installed.")
