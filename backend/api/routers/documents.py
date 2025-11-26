@@ -11,11 +11,7 @@ from services.document_parser import DocumentParser
 from services.item_extractor import ItemExtractor
 from api.dependencies.auth import verify_supabase_token
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+# Get module logger
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
