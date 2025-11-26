@@ -25,13 +25,14 @@ limiter = Limiter(key_func=get_remote_address)
 # Security: File upload limits (10MB max)
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB in bytes
 
-# Allowed MIME types and their magic byte signatures
+# Allowed MIME types for file uploads
+# Note: Actual file validation uses python-magic library in validate_file_content()
 ALLOWED_MIME_TYPES = {
-    "text/plain": [b""],  # Text files can start with anything
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [b"PK"],  # ZIP-based
-    "application/pdf": [b"%PDF"],
-    "image/jpeg": [b"\xff\xd8\xff"],
-    "image/png": [b"\x89PNG"],
+    "text/plain",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/pdf",
+    "image/jpeg",
+    "image/png",
 }
 
 def validate_file_content(content: bytes, declared_mime: str) -> bool:
@@ -83,7 +84,7 @@ async def parse_document(
 
     try:
         # Validate file type
-        allowed_types = list(ALLOWED_MIME_TYPES.keys()) + ["image/jpg"]
+        allowed_types = ALLOWED_MIME_TYPES | {"image/jpg"}
 
         if file.content_type not in allowed_types:
             raise HTTPException(
@@ -184,7 +185,7 @@ async def extract_text_only(
 
     try:
         # Validate file type
-        allowed_types = list(ALLOWED_MIME_TYPES.keys()) + ["image/jpg"]
+        allowed_types = ALLOWED_MIME_TYPES | {"image/jpg"}
 
         if file.content_type not in allowed_types:
             raise HTTPException(
